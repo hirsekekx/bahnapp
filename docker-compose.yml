@@ -1,0 +1,51 @@
+services:
+  mariadb:
+    image: mariadb:11
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${MARIADB_DATABASE}
+      MARIADB_USER: ${MARIADB_USER}
+      MARIADB_PASSWORD: ${MARIADB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD}
+      TZ: ${TZ:-Europe/Berlin}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./src/bahnapp/db/migrations.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  tracker:
+    build: .
+    restart: unless-stopped
+    command: ["python", "-m", "bahnapp.tracker.main"]
+    env_file: .env
+    environment:
+      MARIADB_HOST: mariadb
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+  streamlit:
+    build: .
+    restart: unless-stopped
+    command:
+      - "streamlit"
+      - "run"
+      - "src/bahnapp/ui/app.py"
+      - "--server.port=8501"
+      - "--server.address=0.0.0.0"
+      - "--server.headless=true"
+    env_file: .env
+    environment:
+      MARIADB_HOST: mariadb
+    ports:
+      - "8501:8501"
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+volumes:
+  mariadb_data:
