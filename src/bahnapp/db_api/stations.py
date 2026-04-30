@@ -20,7 +20,7 @@ def search_stations(query: str, results: int = 8) -> list[dict]:
     resp.raise_for_status()
     out = []
     for loc in resp.json():
-        if loc.get("type") != "stop":
+        if not loc.get("id") or not loc.get("name"):
             continue
         out.append({
             "eva_no": int(loc["id"]),

@@ -110,4 +110,6 @@ def search_locations(query: str, results: int = 8) -> list[dict]:
             "poi": "false",
         })
         resp.raise_for_status()
-        return [loc for loc in resp.json() if loc.get("type") == "stop"]
+        # Filter only stops (exclude addresses/POIs) — we already pass stops=true,
+        # but the API occasionally returns mixed types; keep everything with an id.
+        return [loc for loc in resp.json() if loc.get("id") and loc.get("name")]
