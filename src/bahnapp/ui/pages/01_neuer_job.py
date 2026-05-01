@@ -8,7 +8,7 @@ import streamlit as st
 from bahnapp.config import get_settings
 from bahnapp.db.models import Station, TrackingJob
 from bahnapp.db.session import session_scope
-from bahnapp.routing.transport_rest import search_locations
+from bahnapp.routing.transport_rest import UpstreamUnavailable, search_locations
 from bahnapp.tracker.discovery import discover_for_job_day
 from bahnapp.ui._shared import gate
 
@@ -24,6 +24,14 @@ def _station_picker(label: str, key: str) -> dict | None:
         return None
     try:
         results = search_locations(query, results=8)
+    except UpstreamUnavailable as exc:
+        st.warning(
+            f"Stationssuche aktuell nicht verfügbar ({exc}). "
+            "Bitte gleich nochmal versuchen — der öffentliche Routing-Dienst "
+            "ist zeitweise überlastet."
+        )
+        st.button("Erneut versuchen", key=f"retry_{key}")
+        return None
     except Exception as exc:
         st.error(f"Stationssuche fehlgeschlagen: {exc}")
         return None
